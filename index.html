@@ -1,0 +1,160 @@
+<!DOCTYPE html><html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSINT Tool</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#0b0b0b;color:#fff}
+header{text-align:center;padding:30px}
+h1{margin:0;font-size:36px;text-shadow:0 0 10px #6a5acd}
+.container{max-width:1000px;margin:auto;padding:20px}
+.section{margin-top:40px}
+input{padding:10px;border-radius:8px;border:none;outline:none;width:250px;margin-right:10px;background:#111;color:#fff}
+button{padding:10px 15px;border-radius:8px;border:none;cursor:pointer;background:#6a5acd;color:#fff;margin-top:10px}
+button:hover{background:#7b68ee}
+.links{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:20px}
+.card{background:#111;padding:10px;border-radius:8px;box-shadow:0 0 8px rgba(106,90,205,0.3)}
+.card a{color:#7b68ee;text-decoration:none;word-break:break-all;display:block}
+.result{margin-top:20px;background:#111;padding:15px;border-radius:10px;box-shadow:0 0 10px rgba(0,255,255,0.2)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+<h1>Sucionov OSINT</h1>
+<p>username @harmonyless</p>
+</header>
+<div class="container"><div class="section">
+<h2>Поиск по username</h2>
+<input type="text" id="username" placeholder="Введите username">
+<button onclick="generateLinks()">Сгенерировать</button>
+<div class="links" id="links"></div>
+</div><div class="section">
+<h2>GitHub поиск тулок</h2>
+<input type="text" id="ghQuery" placeholder="например osint">
+<button onclick="searchGitHub()">Поиск</button>
+<div class="links" id="ghResults"></div>
+</div><div class="section">
+<h2>EXIF анализ</h2>
+<input type="file" id="imageInput">
+<button onclick="readExif()">Анализировать</button>
+<div class="result" id="exifResult"></div>
+</div><div class="section">
+<button onclick="toggleBots()">Боты</button>
+<div id="botsSection" class="hidden">
+<div id="botsList" class="links"></div>
+</div>
+</div><div class="section">
+<button onclick="toggleFio()">По ФИО</button>
+<div id="fioSection" class="hidden"><div id="fioList" class="links"></div></div>
+</div><div class="section">
+<button onclick="toggleNick()">По Никнейм</button>
+<div id="nickSection" class="hidden"><div id="nickList" class="links"></div></div>
+</div><div class="section">
+<button onclick="toggleEmail()">По почте</button>
+<div id="emailSection" class="hidden"><div id="emailList" class="links"></div></div>
+</div></div><script src="https://cdn.jsdelivr.net/npm/exif-js"></script><script>
+const platforms=["github.com","instagram.com","tiktok.com/@","twitter.com","reddit.com/user","facebook.com","vk.com","telegram.me","youtube.com/@","pinterest.com","twitch.tv","medium.com/@","behance.net","dribbble.com","soundcloud.com","patreon.com","deviantart.com","flickr.com/people","gitlab.com","bitbucket.org","stackoverflow.com/users","discord.com","snapchat.com/add","tumblr.com","quora.com/profile","goodreads.com","mix.com","replit.com/@","dev.to","hashnode.com/@","about.me","linktr.ee","triller.co","ko-fi.com","buymeacoffee.com","allmylinks.com","bio.link"]
+function generateLinks(){
+const username=document.getElementById("username").value.trim();
+const container=document.getElementById("links");
+container.innerHTML="";
+if(!username){container.innerHTML="Введите username";return}
+platforms.forEach(site=>{
+let url="https://"+site+"/"+username;
+const div=document.createElement("div");
+div.className="card";
+div.innerHTML='<a href="'+url+'" target="_blank">'+url+'</a>';
+container.appendChild(div)
+})
+}
+function searchGitHub(){
+const query=document.getElementById("ghQuery").value.trim();
+const container=document.getElementById("ghResults");
+container.innerHTML="";
+if(!query){container.innerHTML="Введите запрос";return}
+fetch("https://api.github.com/search/repositories?q="+encodeURIComponent(query))
+.then(r=>r.json())
+.then(data=>{
+if(!data.items){container.innerHTML="Нет результатов";return}
+data.items.slice(0,20).forEach(repo=>{
+const div=document.createElement("div");
+div.className="card";
+div.innerHTML='<a href="'+repo.html_url+'" target="_blank">'+repo.full_name+'</a>';
+container.appendChild(div)
+})
+})
+}
+function readExif(){
+const file=document.getElementById("imageInput").files[0];
+const result=document.getElementById("exifResult");
+if(!file){result.innerHTML="Загрузите изображение";return}
+const reader=new FileReader();
+reader.onload=function(e){
+const img=new Image();
+img.src=e.target.result;
+img.onload=function(){
+EXIF.getData(img,function(){
+const all=EXIF.getAllTags(this);
+let html="<b>EXIF данные:</b><br><br>";
+if(Object.keys(all).length===0){html+="EXIF не найден"}else{
+for(let k in all){html+=k+": "+all[k]+"<br>"}
+}
+document.getElementById("exifResult").innerHTML=html
+})
+}
+}
+reader.readAsDataURL(file)
+}
+function toggleBots(){toggleBlock("botsSection","botsList",bots)}
+function toggleFio(){toggleBlock("fioSection","fioList",fio)}
+function toggleNick(){toggleBlock("nickSection","nickList",nick)}
+function toggleEmail(){toggleBlock("emailSection","emailList",email)}
+function toggleBlock(sectionId,listId,data){
+const section=document.getElementById(sectionId);
+section.classList.toggle("hidden");
+if(!section.classList.contains("hidden"))renderList(listId,data)
+}
+function renderList(id,data){
+const container=document.getElementById(id);
+container.innerHTML="";
+data.forEach(item=>{
+const div=document.createElement("div");
+div.className="card";
+div.innerHTML='<a href="'+item.url+'" target="_blank">'+item.name+'</a>';
+container.appendChild(div)
+})
+}
+const bots=[
+{name:"FunStat",url:"https://t.me/funstatsucionovBot?start=01080281352B75617466"},
+{name:"Sherlock",url:"https://t.me/Slayer_probiv_bot"},
+{name:"Breach Scan",url:"https://t.me/osint_bot_link_backup"},
+{name:"VK History",url:"https://t.me/VKHistoryRobot"},
+{name:"BigBase",url:"https://br9z.href.bot/"}
+];
+const fio=[
+{name:"Spravkaru",url:"http://spra.vkaru.net/"},
+{name:"Poiski",url:"https://poiski.pro/"},
+{name:"Radaris",url:"https://radaris.ru/"}
+];
+const nick=[
+{name:"WhatsMyName",url:"https://whatsmyname.app"},
+{name:"Maigret",url:"https://github.com/soxoj/maigret"},
+{name:"Namecheckup",url:"https://namecheckup.com/"},
+{name:"Sherlock",url:"https://github.com/sherlock-project/sherlock"},
+{name:"Oathnet",url:"https://oathnet.org/"},
+{name:"Rusfinder",url:"https://rusfinder.pro"}
+];
+const email=[
+{name:"Poastal",url:"https://github.com/jakecreps/poastal"},
+{name:"Epieos",url:"https://epieos.com/"},
+{name:"Skymem",url:"https://www.skymem.info/"},
+{name:"OSINT Industries",url:"https://www.osint.industries/"},
+{name:"Rusfinder",url:"https://rusfinder.pro"},
+{name:"Vipchecker",url:"https://vipchecker.ru"},
+{name:"Bonday",url:"https://bonday.xyz"},
+{name:"Bighack",url:"https://bighack.me"},
+{name:"Fth",url:"https://fth.so"}
+];
+</script></body>
+</html>
